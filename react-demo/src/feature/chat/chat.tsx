@@ -6,9 +6,14 @@ import ChatMessageItem from './component/chat-message-item';
 import ChatReceiverContainer from './component/chat-receiver';
 import { useChat } from './hooks/useChat';
 import './chat.scss';
+import { RouteComponentProps } from 'react-router-dom';
+
 
 const { TextArea } = Input;
-const ChatContainer = () => {
+
+const ChatContainer: React.FunctionComponent<RouteComponentProps> = (props) => {
+  const { history } = props;
+
   const zmClient = useContext(ZoomContext);
   const chatClient = zmClient.getChatClient();
   const [chatDraft, setChatDraft] = useState<string>('');
@@ -36,6 +41,7 @@ const ChatContainer = () => {
         sendMessage(chatDraft);
         setChatDraft('');
       }
+      history.push(`/new-home`);  {/* added this */}
     },
     [sendMessage, chatUser, chatDraft]
   );

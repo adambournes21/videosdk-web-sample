@@ -1,4 +1,4 @@
-import { useState, useCallback, useContext, useEffect, MutableRefObject } from 'react';
+import { useState, useCallback, useContext, useEffect, MutableRefObject, useRef } from 'react';
 import classNames from 'classnames';
 import { message } from 'antd';
 import ZoomContext from '../../../context/zoom-context';
@@ -32,7 +32,16 @@ import IsoRecordingModal from './recording-ask-modal';
 import { LiveStreamButton, LiveStreamModal } from './live-stream';
 import { IconFont } from '../../../component/icon-font';
 import { VideoMaskModel } from './video-mask-modal';
-interface VideoFooterProps {
+
+import { RouteComponentProps } from 'react-router-dom';
+import { updateUserGroup, haveUserLeaveRoom, fetchNextUserGroup, uploadVideo, storeVideoReference, createVideoReference, markCriticalMoment } from '../../../firebaseConfig';
+import { useAuth } from '../../../authContext'; // Adjust the path as per your directory structure
+import moment from 'moment-timezone';
+import { useModal } from '../../../ModalContext';
+import ChatModal from '../../../ChatModal';
+
+
+interface VideoFooterProps extends RouteComponentProps {
   className?: string;
   selfShareCanvas?: HTMLCanvasElement | HTMLVideoElement | null;
   sharing?: boolean;
@@ -40,7 +49,15 @@ interface VideoFooterProps {
 
 const isAudioEnable = typeof AudioWorklet === 'function';
 const VideoFooter = (props: VideoFooterProps) => {
-  const { className, selfShareCanvas, sharing } = props;
+
+  const authContext = useAuth();
+  if (!authContext) {
+    // Handle the case where auth context is null. For example:
+    return null; // or some other appropriate handling
+  }
+  const { loggedInUsername, setLoggedInUsername, userGroup, setUserGroup, isResearcher, setIsResearcher, researcher, setResearcher } = authContext;
+
+  const { history, className, selfShareCanvas, sharing } = props;
   const zmClient = useContext(ZoomContext);
   const { mediaStream } = useContext(ZoomMediaContext);
   const liveTranscriptionClient = zmClient.getLiveTranscriptionClient();
@@ -81,6 +98,17 @@ const VideoFooter = (props: VideoFooterProps) => {
   // Video Mask
   const [videoMaskVisible, setVideoMaskVisible] = useState(false);
 
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+
+  const { modalStates, setModalState } = useModal();
+
+  const handleChatButtonClick = () => {
+    setModalState('chatModal', !modalStates.chatModal);
+  };
+
+
   const onCameraClick = useCallback(async () => {
     if (isStartedVideo) {
       await mediaStream?.stopVideo();
@@ -115,6 +143,7 @@ const VideoFooter = (props: VideoFooterProps) => {
       setIsStartedVideo(true);
     }
   }, [mediaStream, isStartedVideo, zmClient, isBlur]);
+
   const onMicrophoneClick = useCallback(async () => {
     if (isStartedAudio) {
       if (isMuted) {
@@ -134,6 +163,7 @@ const VideoFooter = (props: VideoFooterProps) => {
       setIsStartedAudio(true);
     }
   }, [mediaStream, isStartedAudio, isMuted]);
+
   const onMicrophoneMenuClick = async (key: string) => {
     if (mediaStream) {
       const [type, deviceId] = key.split('|');
@@ -161,6 +191,7 @@ const VideoFooter = (props: VideoFooterProps) => {
       }
     }
   };
+
   const onSwitchCamera = async (key: string) => {
     if (mediaStream) {
       if (activeCamera !== key) {
@@ -170,10 +201,12 @@ const VideoFooter = (props: VideoFooterProps) => {
       }
     }
   };
+
   const onMirrorVideo = async () => {
     await mediaStream?.mirrorVideo(!isMirrored);
     setIsMirrored(!isMirrored);
   };
+
   const onBlurBackground = async () => {
     const isSupportVirtualBackground = mediaStream?.isSupportVirtualBackground();
     if (isSupportVirtualBackground) {
@@ -185,12 +218,13 @@ const VideoFooter = (props: VideoFooterProps) => {
     } else {
       setVideoMaskVisible(true);
     }
-
     setIsBlur(!isBlur);
   };
+
   const onPhoneCall = async (code: string, phoneNumber: string, name: string, option: DialOutOption) => {
     await mediaStream?.inviteByPhone(code, phoneNumber, name, option);
   };
+
   const onPhoneCallCancel = async (code: string, phoneNumber: string, option: { callMe: boolean }) => {
     if ([DialoutState.Calling, DialoutState.Ringing, DialoutState.Accepted].includes(phoneCallStatus as any)) {
       await mediaStream?.cancelInviteByPhone(code, phoneNumber, option);
@@ -202,6 +236,7 @@ const VideoFooter = (props: VideoFooterProps) => {
     }
     return Promise.resolve();
   };
+
   const onHostAudioMuted = useCallback((payload) => {
     const { action, source, type } = payload;
     if (action === AudioChangeAction.Join) {
@@ -221,6 +256,7 @@ const VideoFooter = (props: VideoFooterProps) => {
       }
     }
   }, []);
+  
   const onScreenShareClick = useCallback(async () => {
     if (mediaStream?.getShareStatus() === ShareStatus.End && selfShareCanvas) {
       await mediaStream?.startShareScreen(selfShareCanvas, { requestReadReceipt: true });
@@ -253,16 +289,49 @@ const VideoFooter = (props: VideoFooterProps) => {
   );
 
   const onLeaveClick = useCallback(async () => {
+    console.log("this is leaveClick: loggedInUsername: ", loggedInUsername);
+    haveUserLeaveRoom(loggedInUsername, userGroup);
+    if (loggedInUsername != 'r') {
+      fetchNextUserGroup(loggedInUsername).then((result) => {
+        if (result.success && result.nextUserGroup) {
+          setUserGroup(result.nextUserGroup);
+        } else {
+          console.error(result.message || 'Failed to fetch next user group.');
+        }
+      });
+    }
     await zmClient.leave();
+    updateUserGroup(loggedInUsername);
+    if (userGroup) {
+      history.push('new-home'); //set to waiting-room
+    } else {
+      history.push('r')
+    }
   }, [zmClient]);
 
   const onEndClick = useCallback(async () => {
+    console.log("this is endClick: loggedInUsername: ", loggedInUsername);
     await zmClient.leave(true);
+    fetchNextUserGroup(loggedInUsername).then((result) => {
+      if (result.success && result.nextUserGroup) {
+        setUserGroup(result.nextUserGroup);
+      } else {
+        console.error(result.message || 'Failed to fetch next user group.');
+      }
+    });
+    updateUserGroup(loggedInUsername);
+    haveUserLeaveRoom(loggedInUsername, userGroup);
+    if (userGroup) {
+      history.push('new-home'); //set to waiting-room
+    } else {
+      history.push('r');
+    }
   }, [zmClient]);
 
   const onPassivelyStopShare = useCallback(({ reason }) => {
     console.log('passively stop reason:', reason);
   }, []);
+
   const onDeviceChange = useCallback(() => {
     if (mediaStream) {
       setMicList(mediaStream.getMicList());
@@ -295,24 +364,30 @@ const VideoFooter = (props: VideoFooterProps) => {
   }, []);
 
   const onRecordingClick = async (key: string) => {
+    console.log(key);
     switch (key) {
       case 'Record': {
         await recordingClient?.startCloudRecording();
+        console.log("Record Clicked");
         break;
       }
       case 'Resume': {
         await recordingClient?.resumeCloudRecording();
+        console.log("Resume Clicked");
         break;
       }
       case 'Stop': {
         await recordingClient?.stopCloudRecording();
+        console.log("Stop Clicked");
         break;
       }
       case 'Pause': {
         await recordingClient?.pauseCloudRecording();
+        console.log("Pause Clicked");
         break;
       }
       case 'Status': {
+        console.log("Status Clicked");
         break;
       }
       default: {
@@ -320,30 +395,85 @@ const VideoFooter = (props: VideoFooterProps) => {
       }
     }
   };
-  const onVideoCaptureChange = useCallback((payload) => {
-    if (payload.state === VideoCapturingState.Started) {
-      setIsStartedVideo(true);
-    } else {
-      setIsStartedVideo(false);
-    }
-  }, []);
-  const onShareAudioChange = useCallback(
-    (payload) => {
-      const { state } = payload;
-      if (state === 'on') {
-        if (!mediaStream?.isSupportMicrophoneAndShareAudioSimultaneously()) {
-          setIsComputerAudioDisabled(true);
+
+  // Function to start screen recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      recordedChunksRef.current = [];
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
         }
-      } else if (state === 'off') {
-        setIsComputerAudioDisabled(false);
+      };
+      mediaRecorder.onstop = handleStopRecording;
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+      setIsRecording(true);
+      const callStartTime = moment().tz('America/New_York').format();
+      await createVideoReference(loggedInUsername, { title: 'Screen Recording' }, callStartTime);
+      console.log('Recording uploaded successfully');    } catch (error) {
+      console.error('Error starting screen recording:', error);
+    }
+  };
+
+  // Function to stop screen recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
+    }
+  };
+
+  // Function to handle recording stop
+  const handleStopRecording = async () => {
+    const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+    const videoFile = new File([videoBlob], 'screen-recording.webm', { type: 'video/webm' });
+
+    // Upload video file to Firebase
+    try {
+      const videoPath = await uploadVideo(videoFile);
+      await storeVideoReference(loggedInUsername, videoPath);
+    } catch (error) {
+      console.error('Error uploading recording:', error);
+    }
+  };
+
+  //Function to markCriticalMoments
+  const handleMarkCriticalMoment = async () => {
+    try {
+      await markCriticalMoment(loggedInUsername, "comment", researcher)
+    } catch (error) {
+      console.error('Error marking critical moment:', error);
+    }
+  }
+
+    const onVideoCaptureChange = useCallback((payload) => {
+      if (payload.state === VideoCapturingState.Started) {
+        setIsStartedVideo(true);
+      } else {
+        setIsStartedVideo(false);
       }
-    },
-    [mediaStream]
-  );
-  const onHostAskToUnmute = useCallback((payload) => {
-    const { reason } = payload;
-    console.log(`Host ask to unmute the audio.`, reason);
-  }, []);
+    }, []);
+    const onShareAudioChange = useCallback(
+      (payload) => {
+        const { state } = payload;
+        if (state === 'on') {
+          if (!mediaStream?.isSupportMicrophoneAndShareAudioSimultaneously()) {
+            setIsComputerAudioDisabled(true);
+          }
+        } else if (state === 'off') {
+          setIsComputerAudioDisabled(false);
+        }
+      },
+      [mediaStream]
+    );
+    const onHostAskToUnmute = useCallback((payload) => {
+      const { reason } = payload;
+      console.log(`Host ask to unmute the audio.`, reason);
+    }, []);
 
   const onCaptionStatusChange = useCallback((payload) => {
     const { autoCaption } = payload;
@@ -398,6 +528,8 @@ const VideoFooter = (props: VideoFooterProps) => {
       message.error('Start live streaming timeout');
     }
   }, []);
+
+
   useEffect(() => {
     zmClient.on('current-audio-change', onHostAudioMuted);
     zmClient.on('passively-stop-share', onPassivelyStopShare);
@@ -533,6 +665,7 @@ const VideoFooter = (props: VideoFooterProps) => {
           }}
         />
       )}
+
       {recordingButtons.map((button: RecordButtonProps) => {
         return (
           <RecordingButton
@@ -544,6 +677,26 @@ const VideoFooter = (props: VideoFooterProps) => {
           />
         );
       })}
+
+      {/* added this */}
+      {/* <RecordingButton
+        key="hi"
+        onClick={() => {
+          onNewRecordingClick();
+        }}
+        {...recordingButtons[0]} */}
+
+      <button onClick={isRecording ? stopRecording : startRecording}>
+        {isRecording ? 'Stop Recording' : 'Start Recording'}
+      </button>
+
+      <button onClick={handleMarkCriticalMoment}>
+        Mark Critical Moment
+      </button>
+
+      <button onClick={handleChatButtonClick}>Toggle Chat Modal</button>
+      <ChatModal />
+      
       {liveTranscriptionClient?.getLiveTranscriptionStatus().isLiveTranscriptionEnabled && (
         <>
           <LiveTranscriptionButton
@@ -556,7 +709,7 @@ const VideoFooter = (props: VideoFooterProps) => {
           <TranscriptionSubtitle text={caption.text} />
         </>
       )}
-      {liveStreamClient?.isLiveStreamEnabled() && zmClient.isHost() && (
+      {/* {liveStreamClient?.isLiveStreamEnabled() && zmClient.isHost() && (
         <>
           <LiveStreamButton
             isLiveStreamOn={liveStreamStatus === LiveStreamStatus.InProgress}
@@ -570,11 +723,11 @@ const VideoFooter = (props: VideoFooterProps) => {
             }}
           />
         </>
-      )}
+      )} */}
       {liveStreamStatus === LiveStreamStatus.InProgress && (
         <IconFont type="icon-live" style={{ position: 'fixed', top: '45px', left: '10px', color: '#f00' }} />
       )}
-      <LeaveButton onLeaveClick={onLeaveClick} isHost={zmClient.isHost()} onEndClick={onEndClick} />
+      <LeaveButton {...props} onLeaveClick={onLeaveClick} isHost={zmClient.isHost()} onEndClick={onEndClick} />
 
       <AudioVideoStatisticModal
         visible={statisticVisible}

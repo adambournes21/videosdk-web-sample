@@ -44,8 +44,18 @@ export function useGalleryLayout(
           pageParticipants.splice(1, 0, currentUser);
           pageParticipants = pageParticipants.filter((_user, index) => Math.floor(index / pageSize) === page);
         }
+
+        pageParticipants = pageParticipants.filter((participant) => {
+          if (participant.displayName === 'researcher') {
+            // Modify or exclude participant based on your requirement
+            return false; // Exclude
+          }
+          return true;
+        });
+
         setVisibleParticipants(pageParticipants);
-        const videoParticipants = pageParticipants.filter((user) => user.bVideoOn).map((user) => user.userId);
+
+        const videoParticipants = pageParticipants.filter((user) => (user.bVideoOn)).map((user) => user.userId);
         setSubscribedVideos(videoParticipants);
       }
     },

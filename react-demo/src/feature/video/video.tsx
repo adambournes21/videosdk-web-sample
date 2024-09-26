@@ -31,6 +31,8 @@ const VideoContainer: React.FunctionComponent<RouteComponentProps> = (props) => 
   const canvasDimension = useCanvasDimension(mediaStream, videoRef);
   const activeVideo = useActiveVideo(zmClient);
   const { page, pageSize, totalPage, totalSize, setPage } = usePagination(zmClient, canvasDimension);
+
+
   const { visibleParticipants, layout: videoLayout } = useGalleryLayout(
     zmClient,
     mediaStream,
@@ -44,6 +46,7 @@ const VideoContainer: React.FunctionComponent<RouteComponentProps> = (props) => 
       totalSize
     }
   );
+
   const avatarActionState = useAvatarAction(zmClient, visibleParticipants);
   const networkQuality = useNetworkQuality(zmClient);
   return (
@@ -83,7 +86,7 @@ const VideoContainer: React.FunctionComponent<RouteComponentProps> = (props) => 
           <RemoteCameraControlPanel />
         </AvatarActionContext.Provider>
       </div>
-      <VideoFooter className="video-operations" sharing selfShareCanvas={shareViewRef.current?.selfShareRef} />
+      <VideoFooter {...props} className="video-operations" sharing selfShareCanvas={shareViewRef.current?.selfShareRef} />
 
       {totalPage > 1 && <Pagination page={page} totalPage={totalPage} setPage={setPage} inSharing={isRecieveSharing} />}
       <ReportBtn />

@@ -1,5 +1,5 @@
 /* eslint-disable no-restricted-globals */
-import React from 'react';
+import React, { useState } from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { Card, Button } from 'antd';
 import { IconFont } from '../../component/icon-font';
@@ -12,6 +12,21 @@ interface HomeProps extends RouteComponentProps {
 }
 const Home: React.FunctionComponent<HomeProps> = (props) => {
   const { history, status, onLeaveOrJoinSession } = props;
+
+  const [loggingIn, setLoggingIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleSuccessfulLogin = () => {
+    setLoggingIn(false);
+    setLoggedIn(true);
+    console.log("you have logged in");
+    if (!status) {
+      onLeaveOrJoinSession();
+    }
+  }
+
   const onCardClick = (type: string) => {
       history.push(`/${type}${location.search}`);
   };
@@ -47,6 +62,7 @@ const Home: React.FunctionComponent<HomeProps> = (props) => {
       description: 'Audio and Video preview'
     }
   ];
+  
   let actionText;
   if (status === 'connected') {
     actionText = 'Leave';
@@ -55,55 +71,68 @@ const Home: React.FunctionComponent<HomeProps> = (props) => {
   }
   return (
     <div>
-      <div className="nav">
-        <a href="/" className="navhome">
-          <img src="./logo.svg" alt="Home" />
-          <span>VideoSDK Demo</span>
-        </a>
-        <div className="navdoc">
-          <a
-            href="https://marketplace.zoom.us/docs/sdk/video/web/reference"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <span>API Reference</span>
-          </a>
-
-          <a
-            href="https://marketplace.zoom.us/docs/sdk/video/web/build/sample-app"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <span>Doc</span>
-          </a>
+      {!loggedIn ? (
+          <div className="login-container">
+            <div className="login-box">
+              <div className="login-box-content">
+                <p className="login-title">Login</p>
+                <form onSubmit={(e) => {
+                  e.preventDefault(); // Prevents the default form submission behavior
+                  console.log("hello")
+                  handleSuccessfulLogin();
+                }}>                  
+                  <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    className="login-input"
+                    placeholder="username"
+                    required
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    className="login-input"
+                    placeholder="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button type="submit" className="login-button">Login</button>
+                </form>
+              </div>
+            </div>
+          </div>
+      ) : (
+        <div>
+          <div className="nav">
+            <p>you are logged in</p>
+          </div>
+          <div className="home">
+            <h1>Zoom Video SDK feature</h1>
+            <div className="feature-entry">
+              {featureList.map((feature) => {
+                const { key, icon, title, description } = feature;
+                return (
+                  <Card
+                    cover={<IconFont style={{ fontSize: '72px' }} type={icon} />}
+                    hoverable
+                    style={{ width: 320 }}
+                    className="entry-item"
+                    key={key}
+                    onClick={() => onCardClick(key)}
+                  >
+                    <Meta title={title} description={description} />
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        {actionText && (
-          <Button type="link" className="navleave" onClick={onLeaveOrJoinSession}>
-            {actionText}
-          </Button>
-        )}
-      </div>
-
-      <div className="home">
-        <h1>Zoom Video SDK feature</h1>
-        <div className="feature-entry">
-          {featureList.map((feature) => {
-            const { key, icon, title, description } = feature;
-            return (
-              <Card
-                cover={<IconFont style={{ fontSize: '72px' }} type={icon} />}
-                hoverable
-                style={{ width: 320 }}
-                className="entry-item"
-                key={key}
-                onClick={() => onCardClick(key)}
-              >
-                <Meta title={title} description={description} />
-              </Card>
-            );
-          })}
-        </div>
-      </div>
+      )}
     </div>
   );
 };

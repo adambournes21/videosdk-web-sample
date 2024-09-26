@@ -94,18 +94,20 @@ const CameraButton = (props: CameraButtonProps) => {
   return (
     <div className={classNames('camera-footer', className)}>
       {isStartedVideo && menuItems ? (
-        <Dropdown.Button
-          className="vc-dropdown-button"
-          size="large"
-          menu={getAntdDropdownMenu(menuItems, onMenuItemClick)}
-          onClick={onCameraClick}
-          trigger={['click']}
-          type="ghost"
-          icon={<UpOutlined />}
-          placement="topRight"
-        >
-          <VideoCameraOutlined />
-        </Dropdown.Button>
+        <Tooltip title={`${isStartedVideo ? 'stop camera' : 'start camera'}`}>
+          <Dropdown.Button
+            className="vc-dropdown-button"
+            size="large"
+            menu={getAntdDropdownMenu(menuItems, onMenuItemClick)}
+            onClick={onCameraClick}
+            trigger={['click']}
+            type="ghost"
+            icon={<UpOutlined />}
+            placement="topRight"
+          >
+            <VideoCameraOutlined />
+          </Dropdown.Button>
+        </Tooltip>
       ) : (
         <Tooltip title={`${isStartedVideo ? 'stop camera' : 'start camera'}`}>
           <Button

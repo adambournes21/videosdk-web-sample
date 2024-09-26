@@ -117,7 +117,7 @@ const VideoContainer: React.FunctionComponent<RouteComponentProps> = (props) => 
           <RemoteCameraControlPanel />
         </AvatarActionContext.Provider>
       </div>
-      <VideoFooter className="video-operations" sharing selfShareCanvas={shareViewRef.current?.selfShareRef} />
+      <VideoFooter {...props} className="video-operations" sharing selfShareCanvas={shareViewRef.current?.selfShareRef} />
       {totalPage > 1 && <Pagination page={page} totalPage={totalPage} setPage={setPage} inSharing={isRecieveSharing} />}
     </div>
   );

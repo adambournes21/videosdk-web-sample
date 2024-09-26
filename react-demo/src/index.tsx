@@ -8,6 +8,11 @@ import reportWebVitals from './reportWebVitals';
 import ZoomContext from './context/zoom-context';
 import { devConfig } from './config/dev';
 import { b64DecodeUnicode, generateVideoToken } from './utils/util';
+import { AuthProvider } from './authContext';
+import { ModalProvider } from './ModalContext';
+import ChatModal from './ChatModal';
+
+
 
 let meetingArgs: any = Object.fromEntries(new URLSearchParams(location.search));
 // Add enforceGalleryView to turn on the gallery view without SharedAddayBuffer
@@ -65,7 +70,7 @@ if (meetingArgs.web) {
 }
 
 if (!meetingArgs?.cloud_recording_option) {
-  meetingArgs.cloud_recording_option = '0';
+  meetingArgs.cloud_recording_option = '1';
 }
 if (!meetingArgs?.cloud_recording_election) {
   meetingArgs.cloud_recording_election = '';
@@ -79,44 +84,54 @@ if (meetingArgs?.telemetry_tracking_id) {
   meetingArgs.telemetry_tracking_id = '';
 }
 
-if (!meetingArgs.signature && meetingArgs.sdkSecret && meetingArgs.topic) {
-  meetingArgs.signature = generateVideoToken(
-    meetingArgs.sdkKey,
-    meetingArgs.sdkSecret,
-    meetingArgs.topic,
-    meetingArgs.password,
-    meetingArgs.sessionKey,
-    meetingArgs.userIdentity,
-    parseInt(meetingArgs.role, 10),
-    meetingArgs.cloud_recording_option,
-    meetingArgs.cloud_recording_election,
-    meetingArgs.telemetry_tracking_id
-  );
-  console.log('=====================================');
-  console.log('meetingArgs', meetingArgs);
+// console.log("right before the original generateVideoToken");
+// if (!meetingArgs.signature && meetingArgs.sdkSecret && meetingArgs.topic) {
+//   meetingArgs.signature = generateVideoToken(
+//     meetingArgs.sdkKey,
+//     meetingArgs.sdkSecret,
+//     meetingArgs.topic,
+//     meetingArgs.password,
+//     meetingArgs.sessionKey,
+//     meetingArgs.userIdentity,
+//     parseInt(meetingArgs.role, 10),
+//     meetingArgs.cloud_recording_option,
+//     meetingArgs.cloud_recording_election,
+//     meetingArgs.telemetry_tracking_id
+//   );
+//   console.log('=====================================');
+//   console.log('meetingArgs', meetingArgs);
 
-  const urlArgs = {
-    topic: meetingArgs.topic,
-    name: meetingArgs.name,
-    password: meetingArgs.password,
-    sessionKey: meetingArgs.sessionKey,
-    userIdentity: meetingArgs.userIdentity,
-    role: meetingArgs.role || 1,
-    cloud_recording_option: meetingArgs.cloud_recording_option,
-    cloud_recording_election: meetingArgs.cloud_recording_election,
-    telemetry_tracking_id: meetingArgs.telemetry_tracking_id,
-    web: '1'
-  };
-  console.log('use url args');
-  console.log(window.location.origin + '/?' + new URLSearchParams(urlArgs).toString());
-}
+//   const urlArgs = {
+//     topic: meetingArgs.topic,
+//     name: meetingArgs.name,
+//     password: meetingArgs.password,
+//     sessionKey: meetingArgs.sessionKey,
+//     userIdentity: meetingArgs.userIdentity,
+//     role: meetingArgs.role || 1,
+//     cloud_recording_option: meetingArgs.cloud_recording_option,
+//     cloud_recording_election: meetingArgs.cloud_recording_election,
+//     telemetry_tracking_id: meetingArgs.telemetry_tracking_id,
+//     web: '1'
+//   };
+//   console.log('use url args');
+//   console.log(window.location.origin + '/?' + new URLSearchParams(urlArgs).toString());
+// }
+
 const zmClient = ZoomVideo.createClient();
+
 ReactDOM.render(
+
+    
   <React.StrictMode>
-    <ZoomContext.Provider value={zmClient}>
-      <App meetingArgs={meetingArgs as any} />
-    </ZoomContext.Provider>
+    <ModalProvider>
+      <AuthProvider initialState={{ username: null, group: null}}>
+      <ZoomContext.Provider value={zmClient}>
+        <App meetingArgs={meetingArgs as any} />
+      </ZoomContext.Provider>
+      </AuthProvider>
+    </ModalProvider>
   </React.StrictMode>,
+  
   document.getElementById('root')
 );
 

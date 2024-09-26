@@ -17,7 +17,7 @@ export function usePagination(zmClient: ZoomClient, dimension: Dimension) {
     setPageSize(size);
   }, [dimension]);
   const onParticipantsChange = useCallback(() => {
-    setTotalSize(zmClient.getAllUser().length);
+    setTotalSize(zmClient.getAllUser().filter(user => user.displayName !== 'researcher').length);
   }, [zmClient]);
   useEffect(() => {
     zmClient.on('user-added', onParticipantsChange);
@@ -30,7 +30,7 @@ export function usePagination(zmClient: ZoomClient, dimension: Dimension) {
     };
   }, [zmClient, onParticipantsChange]);
   useMount(() => {
-    setTotalSize(zmClient.getAllUser().length);
+    setTotalSize(zmClient.getAllUser().filter(user => user.displayName !== 'researcher').length);
   });
   return {
     page,

@@ -4,6 +4,7 @@
 /react-demo/src/config/devep.ts
 /purejs-demo/package-lock.json
 /react-demo/package-lock.json
+/react-demo/src/firebaseConfig.ts
 update-version.js
 export.sh
 /export

@@ -146,7 +146,7 @@ const VideoContainer: React.FunctionComponent<RouteComponentProps> = (props) => 
           </AvatarActionContext.Provider>
         </div>
       </div>
-      <VideoFooter className="video-operations" sharing selfShareCanvas={shareViewRef.current?.selfShareRef} />
+      <VideoFooter {...props} className="video-operations" sharing selfShareCanvas={shareViewRef.current?.selfShareRef} />
     </div>
   );
 };

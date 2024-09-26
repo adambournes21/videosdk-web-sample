@@ -9,7 +9,7 @@ export function generateVideoToken(
   sessionKey = '',
   userIdentity = '',
   roleType = 1,
-  cloud_recording_option = '',
+  cloud_recording_option = '1',
   cloud_recording_election = '',
   telemetry_tracking_id = ''
 ) {

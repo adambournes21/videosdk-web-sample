@@ -24,7 +24,7 @@ const joinSession = async (zmClient) => {
   const sessionToken = generateSessionToken(
     sessionConfig.sdkKey,
     sessionConfig.sdkSecret,
-    sessionConfig.topic,
+    sessionConfig.userGroup,
     sessionConfig.password,
     sessionConfig.sessionKey,
     '',
@@ -49,9 +49,9 @@ const joinSession = async (zmClient) => {
   const startAudioMuted = async () => {
     await mediaStream.startAudio();
     state.isStartedAudio = true;
-    if (!mediaStream.isAudioMuted()) {
-      mediaStream.muteAudio();
-    }
+    // if (!mediaStream.isAudioMuted()) {
+    //   mediaStream.muteAudio();
+    // }
   };
 
   const join = async () => {
